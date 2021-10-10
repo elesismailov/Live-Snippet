@@ -1,0 +1,74 @@
+
+
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+body {
+    background: lightgrey;
+    font-size: 18px;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+main {
+    position: relative;
+    height: 100vh;
+    width: 100vw;
+}
+
+#editors {
+    display: flex;
+    position: absolute;
+    height: 100%;
+    width: 50%;
+    flex-direction: column;
+    > div {
+        height: 100%;
+        position: relative;
+        .editor-info {
+            padding: 8px 0;
+            position: absolute;
+            height: 10%;
+            width: 96%;
+            top: 0;
+            left: 2%;
+            .editor-title {
+                color: #fff;
+            }
+        }
+    
+        > canvas {
+            border-radius: 4px;
+            position: absolute;
+            background: #999;
+            width: 96%;
+            height: 85%;
+            top: 11%;
+            left: 2%;
+            vertical-align: middle;
+        }
+    }
+    #html-input {
+        background: #454545;
+    }
+    #css-input {
+        background: #656565;
+    }
+    #js-input {
+        display: none;
+        background: #858585;
+    }
+}
+
+#live-preview {
+    background: #2d2d2d;
+    position: absolute;
+    height: 100%;
+    width: 50%;
+    top: 0;
+    right: 0;
+}
