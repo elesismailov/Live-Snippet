@@ -7,6 +7,13 @@
     padding: 0;
 }
 
+.main-theme {
+    --editor-background: #353535;
+    --editor-line-number-color: rgb(175, 165, 19);
+    --editor-line-focus-color: #ffffff15;
+    --editor-text-color: #ffffff99;
+}
+
 
 body {
     background: lightgrey;
@@ -44,7 +51,7 @@ main {
         > canvas {
             border-radius: 4px;
             position: absolute;
-            background: #999;
+            background: var(--editor-background);
             width: 96%;
             height: 85%;
             top: 11%;
