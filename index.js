@@ -12,7 +12,8 @@ let jC = jsCanvas.getContext("2d")
 let htmlCurrentScroll = 0;
 let htmlScreeningCords = [[25-9 - 10, 25 + 10]];
 let htmlStrings = ["Hello, World!"];
-let htmlFocus = {status: false, lineIndex: 0};
+                            //lineIndex, characterIndex
+let htmlFocus = {status: false, lI: 0, cI: 0};
 
 let lineNumberColor = getComputedStyle(document.body).getPropertyValue("--editor-line-number-color")
 let lineFocusColor = getComputedStyle(document.body).getPropertyValue("--editor-line-focus-color")
@@ -25,7 +26,7 @@ let textColor = getComputedStyle(document.body).getPropertyValue("--editor-text-
 // }
 // generateCoords()
 renderHtmlCanvas()
-window.addEventListener("resize", renderHtmlCanvas, htmlScreeningCords[htmlFocus.lineIndex])
+window.addEventListener("resize", renderHtmlCanvas, htmlScreeningCords[htmlFocus.lI])
 
 function resetHtmlCanvas() {
     let {width, height} = htmlCanvas.getClientRects()[0]
@@ -55,10 +56,11 @@ function renderHtmlCanvas() {
     hC.fillStyle = lineFocusColor
     //  line number splitter
     hC.fillRect(37, 0, 1, htmlCanvas.height)
-    //  caret
     if (htmlFocus.status) {
-        hC.fillRect(hC.measureText(htmlStrings[htmlFocus.lineIndex]).width + 45, htmlScreeningCords[htmlFocus.lineIndex][0]+htmlCurrentScroll + 8, 2, 25)
-        hC.fillRect(5, htmlScreeningCords[htmlFocus.lineIndex][0]+htmlCurrentScroll + 8, htmlCanvas.width - 10, 25)
+        //  caret
+        hC.fillRect(hC.measureText(htmlStrings[htmlFocus.lI]).width + 45, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, 2, 25)
+        //  the line the caret is on
+        hC.fillRect(5, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, htmlCanvas.width - 10, 25)
     };
 }
 
@@ -68,7 +70,7 @@ htmlCanvas.addEventListener('click', function(event) {
         value[0] < event.layerY+Math.abs(htmlCurrentScroll) &&
         value[1] > event.layerY+Math.abs(htmlCurrentScroll)) || 0;
     //if clicked at the empty spot of the canvas, focus on the last line
-    htmlFocus.lineIndex = htmlScreeningCords.indexOf(coords) ==-1 ?  htmlScreeningCords.length-1 : htmlScreeningCords.indexOf(coords);
+    htmlFocus.lI = htmlScreeningCords.indexOf(coords) ==-1 ?  htmlScreeningCords.length-1 : htmlScreeningCords.indexOf(coords);
     htmlFocus.status = true;
     renderHtmlCanvas()
 })
@@ -87,29 +89,40 @@ htmlCanvas.addEventListener('wheel', function (event) {
 document.addEventListener("keydown", function(event) {
     if (htmlFocus.status) {
         event.preventDefault()
-        if (/^[\w\d\[\]\(\)\{\} \\\*\-\+\=  \/\?\.\,\!\|'"\&\^\%\;\:]$/i.test(event.key)){
-            htmlStrings[htmlFocus.lineIndex] += event.key
+        console.log(event)
+        if (event.ctrlKey && event.key === "a") {
+            //      implement select all functionality
+            console.log("select all")
+        }
+        else if (/^[\w\d\[\]\(\)\{\} \\\*\-\+\=  \/\?\.\,\!\|'"\&\^\%\;\:]$/i.test(event.key)){
+            htmlStrings[htmlFocus.lI] += event.key
         }
         else if (event.key === "Enter") {
             //  create a new line
-            if ( htmlFocus.lineIndex === htmlScreeningCords.length-1) {
+            if ( htmlFocus.lI === htmlScreeningCords.length-1) {
                 htmlScreeningCords.push([25*(htmlScreeningCords.length+1)-9 - 10, 25*(htmlScreeningCords.length+1) + 10])
                 htmlStrings.push("")
-            }
-            htmlFocus.lineIndex ++
+            } else if (htmlFocus.lI < htmlScreeningCords.length-1) {
+                htmlScreeningCords.splice(htmlFocus.lI, 0, [25*(htmlFocus.lI)-9 - 10, 25*(htmlFocus.lI) + 10])
+                htmlStrings.splice(htmlFocus.lI+1, 0, "")
+                htmlScreeningCords = [...htmlScreeningCords.slice(0, htmlFocus.lI), ...htmlScreeningCords.slice(htmlFocus.lI).map((arr) => [arr[0] + 25, arr[1] + 25])]
+            }   
+            htmlFocus.lI ++
         }
         else if ( event.key === "Backspace" ) {
             //      jump one line up
-            if ( htmlStrings[htmlFocus.lineIndex].length === 0 && htmlFocus.lineIndex > 0) {
-                htmlScreeningCords.pop()
-                htmlStrings.pop()
-                htmlFocus.lineIndex--
+            if ( htmlStrings[htmlFocus.lI].length === 0 && htmlFocus.lI > 0) {
+                htmlScreeningCords.splice(htmlFocus.lI,1)
+                htmlStrings.splice(htmlFocus.lI, 1)
+                if (htmlFocus.lI < htmlScreeningCords.length) {
+                    htmlScreeningCords = [...htmlScreeningCords.slice(0, htmlFocus.lI), ...htmlScreeningCords.slice(htmlFocus.lI).map((arr) => [arr[0] - 25, arr[1] - 25])]
+                }
+                htmlFocus.lI--
             } else {
                 // delete one character
-                htmlStrings[htmlFocus.lineIndex] = htmlStrings[htmlFocus.lineIndex].slice(0,-1)
+                htmlStrings[htmlFocus.lI] = htmlStrings[htmlFocus.lI].slice(0,-1)
             }
         }
-        // htmlStrings[htmlFocus.lineIndex] += event.key
         renderHtmlCanvas()
     }
 })
