@@ -1,79 +1,70 @@
 
 
 
-const htmlCanvas = document.querySelector("#html-input-canvas")
-const cssCanvas = document.querySelector("#css-input-canvas")
-const jsCanvas = document.querySelector("#js-input-canvas")
+const htmlCanvas = document.querySelector("#html-input-canvas");
+const cssCanvas = document.querySelector("#css-input-canvas");
+const jsCanvas = document.querySelector("#js-input-canvas");
 
 
-const HC = htmlCanvas.getContext("2d")
-const CC = cssCanvas.getContext("2d")
-const JC = jsCanvas.getContext("2d")
+const HC = htmlCanvas.getContext("2d");
+const CC = cssCanvas.getContext("2d");
+const JC = jsCanvas.getContext("2d");
 let htmlCurrentScroll = 0;
 let htmlScreeningCords = [[25-9 - 10, 25 + 10]];
 let htmlStrings = ["Hello, World!"];
-                            //lineIndex, characterIndex
-let htmlFocus = {status: false, lI: 0, cI: 0};
+let htmlFocus = {
+    status: false, 
+    lI: 0, //   line index
+    cI: 0, //   character index
+    caret: true,
+    interval: false,
+    timeout: null,
+};
 
-const COMPUTED_STYLES = getComputedStyle(document.body)
-let lineNumberColor = COMPUTED_STYLES.getPropertyValue("--editor-line-number-color")
-let lineFocusColor = COMPUTED_STYLES.getPropertyValue("--editor-line-focus-color")
-let textColor = COMPUTED_STYLES.getPropertyValue("--editor-text-color")
+const COMPUTED_STYLES = getComputedStyle(document.body);
+let lineNumberColor = COMPUTED_STYLES.getPropertyValue("--editor-line-number-color");
+let lineFocusColor = COMPUTED_STYLES.getPropertyValue("--editor-line-focus-color");
+let textColor = COMPUTED_STYLES.getPropertyValue("--editor-text-color");
+let caretColor = COMPUTED_STYLES.getPropertyValue("--editor-caret-color");
 
 renderHtmlCanvas()
 window.addEventListener("resize", renderHtmlCanvas, htmlScreeningCords[htmlFocus.lI])
 
 function resetHtmlCanvas() {
-    let {width, height} = htmlCanvas.getClientRects()[0]
+    let {width, height} = htmlCanvas.getClientRects()[0];
     htmlCanvas.width = width;
     htmlCanvas.height = height;
 }
 function renderHtmlCanvas() {
     resetHtmlCanvas()
-    HC.font = "16px Fira Code, sans-serif"
-
+    HC.font = "16px Fira Code, sans-serif";
+    let textStart = 55
     for (let i = 0; i < htmlScreeningCords.length; i++) {
         HC.fillStyle = lineNumberColor
-        // if (i < 10) {
-        //     //  code line numbers
-        //     HC.fillText(i+1, 20, htmlScreeningCords[i][0] + htmlCurrentScroll)
-        //     //  renders entered text
-        //     HC.fillStyle = textColor
-        //     HC.fillText(htmlStrings[i], 40, htmlScreeningCords[i][0] +  htmlCurrentScroll)
-        // }else {
-        // }
         //  code line numbers
         HC.fillText(i+1, 15, htmlScreeningCords[i][0] + htmlCurrentScroll + 25)
         //  renders entered text
-        HC.fillStyle = textColor
-        HC.fillText(htmlStrings[i], 45, htmlScreeningCords[i][0] +  htmlCurrentScroll + 25)
+        HC.fillStyle = textColor;
+        HC.fillText(htmlStrings[i], textStart, htmlScreeningCords[i][0] +  htmlCurrentScroll + 25)
     }
-    HC.fillStyle = lineFocusColor
+    HC.fillStyle = lineFocusColor;
     //  line number splitter
-    HC.fillRect(37, 0, 1, htmlCanvas.height)
+    HC.fillRect(textStart-8, 0, 0.5, htmlCanvas.height)
     if (htmlFocus.status) {
-        //  caret
-        HC.fillRect(HC.measureText(htmlStrings[htmlFocus.lI]).width + 45, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, 2, 25)
         //  the line the caret is on
-        HC.fillRect(5, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, htmlCanvas.width - 10, 25)
+        HC.fillRect(2, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, textStart-12, 25)
+        //  caret
+        if (htmlFocus.caret) {
+            HC.fillStyle = caretColor;
+            HC.fillRect(HC.measureText(htmlStrings[htmlFocus.lI]).width + textStart, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, 2, 25)
+        }
     };
 }
-
-//  focus on a certain line
-htmlCanvas.addEventListener('click', function(event) {
-    let coords = htmlScreeningCords.find(value => 
-        value[0] < event.layerY+Math.abs(htmlCurrentScroll) &&
-        value[1] > event.layerY+Math.abs(htmlCurrentScroll)) || 0;
-    //if clicked at the empty spot of the canvas, focus on the last line
-    htmlFocus.lI = htmlScreeningCords.indexOf(coords) ==-1 ?  htmlScreeningCords.length-1 : htmlScreeningCords.indexOf(coords);
-    htmlFocus.status = true;
-    renderHtmlCanvas()
-})
 
 //  canvas scrolling
 htmlCanvas.addEventListener('wheel', function (event) {
     // console.log(event)
-    htmlCurrentScroll -= event.deltaY*0.35
+    htmlCurrentScroll -= event.deltaY*0.35;
     if (htmlCurrentScroll > 0) htmlCurrentScroll = 0;
     renderHtmlCanvas()
 })
@@ -101,9 +92,8 @@ document.addEventListener("keydown", function(event) {
                 htmlFocus.lI++;
             }
             //      implement character indexes
-            console.log(htmlFocus.lI , htmlStrings.length-1)
         }
-        else if (/^[\w\d\[\]\(\)\{\} \\\*\-\+\=  \/\?\.\,\!\|'"\&\^\%\;\:]$/i.test(event.key)){
+        else if (/^[\w\d\[\]\(\)\{\} \\\*\-\+\=  \/\?\.\,\!\|'"\&\^\%\;\: \<\>]$/i.test(event.key)){
             htmlStrings[htmlFocus.lI] += event.key
         }
         else if (event.key === "Enter") {
@@ -114,7 +104,7 @@ document.addEventListener("keydown", function(event) {
             } else if (htmlFocus.lI < htmlScreeningCords.length-1) {
                 htmlScreeningCords.splice(htmlFocus.lI, 0, [25*(htmlFocus.lI)-9 - 10, 25*(htmlFocus.lI) + 10])
                 htmlStrings.splice(htmlFocus.lI+1, 0, "")
-                htmlScreeningCords = [...htmlScreeningCords.slice(0, htmlFocus.lI), ...htmlScreeningCords.slice(htmlFocus.lI).map((arr) => [arr[0] + 25, arr[1] + 25])]
+                htmlScreeningCords = [...htmlScreeningCords.slice(0, htmlFocus.lI), ...htmlScreeningCords.slice(htmlFocus.lI).map((arr) => [arr[0] + 25, arr[1] + 25])];
             }   
             htmlFocus.lI ++
         }
@@ -124,7 +114,7 @@ document.addEventListener("keydown", function(event) {
                 htmlScreeningCords.splice(htmlFocus.lI,1)
                 htmlStrings.splice(htmlFocus.lI, 1)
                 if (htmlFocus.lI < htmlScreeningCords.length) {
-                    htmlScreeningCords = [...htmlScreeningCords.slice(0, htmlFocus.lI), ...htmlScreeningCords.slice(htmlFocus.lI).map((arr) => [arr[0] - 25, arr[1] - 25])]
+                    htmlScreeningCords = [...htmlScreeningCords.slice(0, htmlFocus.lI), ...htmlScreeningCords.slice(htmlFocus.lI).map((arr) => [arr[0] - 25, arr[1] - 25])];
                 }
                 htmlFocus.lI--
             } else {
@@ -132,14 +122,48 @@ document.addEventListener("keydown", function(event) {
                 htmlStrings[htmlFocus.lI] = htmlStrings[htmlFocus.lI].slice(0,-1)
             }
         }
+        clearInterval(htmlFocus.interval)
+        clearInterval(htmlFocus.timeout)
+        htmlFocus.caret = true
+        htmlFocus.timeout = setTimeout(function() {
+            htmlFocus.interval = setInterval(function() {
+                htmlFocus.caret = !htmlFocus.caret
+                renderHtmlCanvas()
+            }, 500)
+        }, 500)
         renderHtmlCanvas()
     }
 })
 
+//  focus on a certain line
+htmlCanvas.addEventListener('click', function(event) {
+    let coords = htmlScreeningCords.find(value => 
+        value[0] < event.layerY+Math.abs(htmlCurrentScroll) &&
+        value[1] > event.layerY+Math.abs(htmlCurrentScroll)) || 0;
+    //if clicked at the empty spot of the canvas, focus on the last line
+    htmlFocus.lI = htmlScreeningCords.indexOf(coords) ==-1 ?  htmlScreeningCords.length-1 : htmlScreeningCords.indexOf(coords);
+    htmlFocus.status = true;
+
+    clearInterval(htmlFocus.interval)
+    htmlFocus.caret = true;
+    htmlFocus.interval = setInterval(function() {
+        htmlFocus.caret = !htmlFocus.caret;
+        renderHtmlCanvas()
+    }, 500)
+
+    renderHtmlCanvas()
+})
+
 // to loose focus from canvases
+function lostFocus() {
+        htmlFocus.status = false
+        clearInterval(htmlFocus.interval)
+        clearInterval(htmlFocus.timeout)
+        renderHtmlCanvas()
+}
 document.addEventListener('click', function(event) {
     if (event.target != htmlCanvas) {
-        htmlFocus.status = false
-        renderHtmlCanvas()
+        lostFocus()
     }
 })
+document.addEventListener('blur', lostFocus)

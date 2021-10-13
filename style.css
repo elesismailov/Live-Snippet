@@ -12,6 +12,7 @@
   --editor-frame-color: #454545;
   --editor-line-number-color: rgb(175, 165, 19);
   --editor-line-focus-color: #ffffff15;
+  --editor-caret-color: #fff9;
   --editor-text-color: #ffffff;
 }
 
@@ -93,15 +94,28 @@ header #logo {
   vertical-align: middle;
 }
 
+#editors #html-input {
+  border-bottom: .5px solid #ffffff17;
+}
+
 #editors #js-input {
   display: none;
 }
 
 #live-preview {
-  background: #2d2d2d;
+  background: #fff;
   position: absolute;
   height: 100%;
   width: 50%;
   top: 0;
   right: 0;
+}
+
+@media (min-width: 900px) {
+  #editors {
+    width: 35%;
+  }
+  #live-preview {
+    width: 65%;
+  }
 }
