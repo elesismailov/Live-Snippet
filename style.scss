@@ -8,10 +8,14 @@
 }
 
 .main-theme {
+    --logo-color: #fff;
+    --header-bg: #27b8c2;
+    
     --editor-background: #353535;
+    --editor-frame-color: #454545;
     --editor-line-number-color: rgb(175, 165, 19);
     --editor-line-focus-color: #ffffff15;
-    --editor-text-color: #ffffff99;
+    --editor-text-color: #ffffff;
 }
 
 
@@ -23,8 +27,25 @@ body {
 
 main {
     position: relative;
-    height: 100vh;
+    height: calc(100vh - 30px);
     width: 100vw;
+}
+
+header {
+    height: 30px;
+    background: var(--header-bg);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    
+    #logo {
+        font-size: 20px;
+        font-family: Montserrat, Arial, Helvetica, sans-serif;
+        font-weight: 600;
+        color: var(--logo-color);
+    }
 }
 
 #editors {
@@ -36,6 +57,7 @@ main {
     > div {
         height: 100%;
         position: relative;
+        background: var(--editor-frame-color);
         .editor-info {
             padding: 8px 0;
             position: absolute;
@@ -60,14 +82,11 @@ main {
         }
     }
     #html-input {
-        background: #454545;
     }
     #css-input {
-        background: #656565;
     }
     #js-input {
         display: none;
-        background: #858585;
     }
 }
 

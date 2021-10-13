@@ -1,30 +1,25 @@
 
 
 
-let htmlCanvas = document.querySelector("#html-input-canvas")
-let cssCanvas = document.querySelector("#css-input-canvas")
-let jsCanvas = document.querySelector("#js-input-canvas")
+const htmlCanvas = document.querySelector("#html-input-canvas")
+const cssCanvas = document.querySelector("#css-input-canvas")
+const jsCanvas = document.querySelector("#js-input-canvas")
 
 
-let hC = htmlCanvas.getContext("2d")
-let cC = cssCanvas.getContext("2d")
-let jC = jsCanvas.getContext("2d")
+const HC = htmlCanvas.getContext("2d")
+const CC = cssCanvas.getContext("2d")
+const JC = jsCanvas.getContext("2d")
 let htmlCurrentScroll = 0;
 let htmlScreeningCords = [[25-9 - 10, 25 + 10]];
 let htmlStrings = ["Hello, World!"];
                             //lineIndex, characterIndex
 let htmlFocus = {status: false, lI: 0, cI: 0};
 
-let lineNumberColor = getComputedStyle(document.body).getPropertyValue("--editor-line-number-color")
-let lineFocusColor = getComputedStyle(document.body).getPropertyValue("--editor-line-focus-color")
-let textColor = getComputedStyle(document.body).getPropertyValue("--editor-text-color")
-// function generateCoords() {
-//     for (let i = 1; i < 21; i++) {
-//         htmlScreeningCords.push([25*i-9 - 10, 25*i + 10])
-//         htmlStrings.push("")
-//     }
-// }
-// generateCoords()
+const COMPUTED_STYLES = getComputedStyle(document.body)
+let lineNumberColor = COMPUTED_STYLES.getPropertyValue("--editor-line-number-color")
+let lineFocusColor = COMPUTED_STYLES.getPropertyValue("--editor-line-focus-color")
+let textColor = COMPUTED_STYLES.getPropertyValue("--editor-text-color")
+
 renderHtmlCanvas()
 window.addEventListener("resize", renderHtmlCanvas, htmlScreeningCords[htmlFocus.lI])
 
@@ -35,32 +30,32 @@ function resetHtmlCanvas() {
 }
 function renderHtmlCanvas() {
     resetHtmlCanvas()
-    hC.font = "16px Fira Code, sans-serif"
+    HC.font = "16px Fira Code, sans-serif"
 
     for (let i = 0; i < htmlScreeningCords.length; i++) {
-        hC.fillStyle = lineNumberColor
+        HC.fillStyle = lineNumberColor
         // if (i < 10) {
         //     //  code line numbers
-        //     hC.fillText(i+1, 20, htmlScreeningCords[i][0] + htmlCurrentScroll)
+        //     HC.fillText(i+1, 20, htmlScreeningCords[i][0] + htmlCurrentScroll)
         //     //  renders entered text
-        //     hC.fillStyle = textColor
-        //     hC.fillText(htmlStrings[i], 40, htmlScreeningCords[i][0] +  htmlCurrentScroll)
+        //     HC.fillStyle = textColor
+        //     HC.fillText(htmlStrings[i], 40, htmlScreeningCords[i][0] +  htmlCurrentScroll)
         // }else {
         // }
         //  code line numbers
-        hC.fillText(i+1, 15, htmlScreeningCords[i][0] + htmlCurrentScroll + 25)
+        HC.fillText(i+1, 15, htmlScreeningCords[i][0] + htmlCurrentScroll + 25)
         //  renders entered text
-        hC.fillStyle = textColor
-        hC.fillText(htmlStrings[i], 45, htmlScreeningCords[i][0] +  htmlCurrentScroll + 25)
+        HC.fillStyle = textColor
+        HC.fillText(htmlStrings[i], 45, htmlScreeningCords[i][0] +  htmlCurrentScroll + 25)
     }
-    hC.fillStyle = lineFocusColor
+    HC.fillStyle = lineFocusColor
     //  line number splitter
-    hC.fillRect(37, 0, 1, htmlCanvas.height)
+    HC.fillRect(37, 0, 1, htmlCanvas.height)
     if (htmlFocus.status) {
         //  caret
-        hC.fillRect(hC.measureText(htmlStrings[htmlFocus.lI]).width + 45, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, 2, 25)
+        HC.fillRect(HC.measureText(htmlStrings[htmlFocus.lI]).width + 45, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, 2, 25)
         //  the line the caret is on
-        hC.fillRect(5, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, htmlCanvas.width - 10, 25)
+        HC.fillRect(5, htmlScreeningCords[htmlFocus.lI][0]+htmlCurrentScroll + 8, htmlCanvas.width - 10, 25)
     };
 }
 
@@ -79,8 +74,6 @@ htmlCanvas.addEventListener('click', function(event) {
 htmlCanvas.addEventListener('wheel', function (event) {
     // console.log(event)
     htmlCurrentScroll -= event.deltaY*0.35
-    // console.log(htmlScreeningCords.slice(-2)[0][0])
-    // if (htmlScreeningCords.slice(-2)[0][1] > Math.abs(htmlCurrentScroll)) {};
     if (htmlCurrentScroll > 0) htmlCurrentScroll = 0;
     renderHtmlCanvas()
 })
@@ -89,10 +82,26 @@ htmlCanvas.addEventListener('wheel', function (event) {
 document.addEventListener("keydown", function(event) {
     if (htmlFocus.status) {
         event.preventDefault()
-        console.log(event)
-        if (event.ctrlKey && event.key === "a") {
+                                     ///     SHORTCUTS
+        // console.log(event)
+        if (event.ctrlKey) {
             //      implement select all functionality
-            console.log("select all")
+            if (event.key === "a") {
+                console.log("select all")
+            }
+            //      implement delete several characters
+            else if (event.key === "Backspace") {
+                console.log("delete several characters")
+            }
+        }
+        else if (/^arrow/i.test(event.key)) {
+            if (event.key === "ArrowUp" && htmlFocus.lI > 0) {
+                htmlFocus.lI--;
+            } else if ( event.key === "ArrowDown" && htmlFocus.lI !== htmlStrings.length-1) {
+                htmlFocus.lI++;
+            }
+            //      implement character indexes
+            console.log(htmlFocus.lI , htmlStrings.length-1)
         }
         else if (/^[\w\d\[\]\(\)\{\} \\\*\-\+\=  \/\?\.\,\!\|'"\&\^\%\;\:]$/i.test(event.key)){
             htmlStrings[htmlFocus.lI] += event.key
