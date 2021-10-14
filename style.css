@@ -12,7 +12,7 @@
   --editor-frame-color: #454545;
   --editor-line-number-color: rgb(175, 165, 19);
   --editor-line-focus-color: #ffffff15;
-  --editor-caret-color: #fff9;
+  --editor-caret-color: rgb(180, 182, 255);
   --editor-text-color: #ffffff;
 }
 
