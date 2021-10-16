@@ -20,6 +20,7 @@ body {
   background: lightgrey;
   font-size: 18px;
   font-family: Verdana, Geneva, Tahoma, sans-serif;
+  letter-spacing: -1px;
 }
 
 main {
