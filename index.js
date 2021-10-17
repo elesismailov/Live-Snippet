@@ -26,21 +26,16 @@ let htmlFocus = {
 };
 
 const COMPUTED_STYLES = getComputedStyle(document.body);
-let lineNumberColor = COMPUTED_STYLES.getPropertyValue(
-    "--editor-line-number-color"
-);
-let lineFocusColor = COMPUTED_STYLES.getPropertyValue(
-    "--editor-line-focus-color"
-);
+let lineNumberColor = COMPUTED_STYLES.getPropertyValue("--editor-line-number-color");
+let lineFocusColor = COMPUTED_STYLES.getPropertyValue("--editor-line-focus-color");
 let textColor = COMPUTED_STYLES.getPropertyValue("--editor-text-color");
 let caretColor = COMPUTED_STYLES.getPropertyValue("--editor-caret-color");
-let textStart = 55*scale;
+
+let textStart = 45*scale;   // 55 for 1000+ lines, 45 for 100+ lines
+let numberStart = 45*scale; // 55 for 1000+ lines, 45 for 100+ lines
 
 renderHtmlCanvas();
-window.addEventListener(
-    "resize",
-    renderHtmlCanvas
-);
+window.addEventListener("resize",renderHtmlCanvas);
 
 function resetHtmlCanvas() {
     let { width, height } = htmlCanvas.getClientRects()[0];
@@ -50,11 +45,15 @@ function resetHtmlCanvas() {
 function renderHtmlCanvas() {
     resetHtmlCanvas();
     HC.font = `${16*scale}px Fira Code, sans-serif`;
+    // HC.fillStyle = "#fff"
+    // HC.fillRect(0,0,numberStart - 8*scale,htmlCanvas.height)
     for (let i = 0; i < htmlRecordedCords.length; i++) {
-        HC.fillStyle = lineNumberColor;
         //  line numbers
+        HC.fillStyle = lineNumberColor;
+        if (htmlFocus.lineI == i && htmlFocus.status) HC.fillStyle = 'yellow';
         HC.fillText(
-            i + 1, 5,
+            i + 1, 
+            numberStart + (- 8 - 13 - (i+1 < 10 ? 0 : 10*((Math.ceil((i + 1)/10)+'').length)))*scale,
             htmlRecordedCords[i][0] + htmlCurrentScroll + universalValue
         );
         //  contents of strings
@@ -67,11 +66,11 @@ function renderHtmlCanvas() {
     }
     HC.fillStyle = lineFocusColor;
     //  line number splitter
-    HC.fillRect(textStart - 8, 0, 0.5, htmlCanvas.height);
+    HC.fillRect(numberStart - 8*scale, 0, 1*scale, htmlCanvas.height);
     if (htmlFocus.status) {
         //  the focused on line
-        HC.fillRect(2, htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScroll + 8,
-            textStart - 12,universalValue
+        HC.fillRect(0, htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScroll + 8*scale,
+            numberStart - 8*scale ,universalValue
         );
         //  caret
         if (htmlFocus.caret) {
@@ -79,7 +78,7 @@ function renderHtmlCanvas() {
             HC.fillRect(HC.measureText(
                     htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI === null ? undefined : htmlFocus.charI)
                 ).width + textStart,
-                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScroll + 8,
+                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScroll + 8*scale,
                 1*scale, universalValue
             );
         }
@@ -279,20 +278,20 @@ backspace.moveCoords = function moveCoords() {
 
 //  focus on a certain line
 htmlCanvas.addEventListener("click", function (event) {
-    let currentLine = htmlStrings[htmlFocus.lineI]
     //  find whether clicked place is in recorded cords
     let coordsY = htmlRecordedCords.find(
                     (value) =>
-                        value[0] < event.layerY + Math.abs(htmlCurrentScroll) &&
-                        value[1] > event.layerY + Math.abs(htmlCurrentScroll)
+                        value[0] < event.layerY*scale + Math.abs(htmlCurrentScroll) &&
+                        value[1] > event.layerY*scale + Math.abs(htmlCurrentScroll)
                 ) || 0;
     //if clicked at the empty spot of the canvas, focus on the last line
-    if (htmlRecordedCords.indexOf(coordsY) !== -1) {
+    if (coordsY) {
         htmlFocus.lineI = htmlRecordedCords.indexOf(coordsY);
-        let currentStringLength = HC.measureText(currentLine).width + textStart;
+        let currentLine = htmlStrings[htmlFocus.lineI]
+        let currentLineLength = HC.measureText(currentLine).width + textStart;
         let clickPoint = event.layerX*scale
-        if (clickPoint <= HC.measureText(currentLine).width + textStart) {
-            for (let i = 0; i < currentLine.length; i++) {
+        if (clickPoint <= currentLineLength) {
+            for (let i = 0; i < currentLineLength; i++) {
                 if (HC.measureText(currentLine.slice(0, i)).width + textStart - 5*scale < clickPoint &&
                     HC.measureText(currentLine.slice(0, i)).width + textStart + 5*scale > clickPoint){
                     htmlFocus.charI = i;
@@ -303,9 +302,9 @@ htmlCanvas.addEventListener("click", function (event) {
             htmlFocus.charI = currentLine.length;
         }
     } else {
-        htmlFocus.lineI = htmlRecordedCords.length - 1;
         //  focus on the end of the line
-        htmlFocus.charI = currentLine.length;
+        htmlFocus.lineI = htmlRecordedCords.length - 1;
+        htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
     }
 
     // let count = 0;
