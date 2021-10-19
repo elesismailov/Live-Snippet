@@ -9,13 +9,13 @@ const CC = cssCanvas.getContext("2d");
 const JC = jsCanvas.getContext("2d");
 let htmlCurrentScroll = 0;
 let htmlRecordedCords = [[ 6, 35 ], [ 31, 60 ], [ 56, 85 ], [ 81, 110 ], [ 106, 135 ], [ 131, 160 ], [ 156, 185 ], [ 181, 210 ], [ 206, 235 ]];
-let htmlStrings = [ "Hello, World!", "fghhmf", "f", "dgdhsFgzdhtxycukv", "fsdfsgrdhfcg", "gsrgfcgh", "gfdzxcbng", "", "" ]
+let htmlStrings = [ "Hello, World!", "fgh-hmf", "f", "dgdh,sFgz;dhtxycukv", "fsdfsgrdhfcg", "gsrgfcgh", "gfdzxcbng", "", "" ]
 htmlRecordedCords =  htmlRecordedCords.map((arr) => [
     arr[0]*scale,
     arr[1]*scale,
+])
 // let htmlRecordedCords = [[universalValue+ (- 9 - 10)*scale, universalValue+( + 10)*scale]];
 // let htmlStrings = ["Hello, World!"];
-])
 let htmlFocus = {
     status: false,  // is focused
     lineI: 0,           //  line index
@@ -50,7 +50,7 @@ function renderHtmlCanvas() {
     for (let i = 0; i < htmlRecordedCords.length; i++) {
         //  line numbers
         HC.fillStyle = lineNumberColor;
-        if (htmlFocus.lineI == i && htmlFocus.status) HC.fillStyle = 'yellow';
+        if (htmlFocus.lineI == i && htmlFocus.status) HC.fillStyle = '#fe0';    // highlight focused line number
         HC.fillText(
             i + 1, 
             numberStart + (- 8 - 13 - (i+1 < 10 ? 0 : 10*((Math.ceil((i + 1)/10)+'').length)))*scale,
@@ -98,17 +98,9 @@ document.addEventListener("keydown", function (event) {
     ///     SHORTCUTS
     // console.log(event)
     if (event.ctrlKey) {
-        //      implement select all functionality
-        if (event.key === "a") {
-            console.log("select all");
-        }
-        //      implement delete several characters
-        else if (event.key === "Backspace") {
-            console.log("delete several characters");
-        }
-        return
-    } 
-    if (htmlFocus.status) {
+        shortCuts(event)
+    }
+    else if (htmlFocus.status) {
         event.preventDefault();
         if (/^arrow/i.test(event.key)) {
             if (event.key === "ArrowUp" && htmlFocus.lineI >= 0) {
@@ -191,24 +183,64 @@ document.addEventListener("keydown", function (event) {
         } 
         else if (event.key === "Backspace") backspace(event)
 
-        //   ||   next lines are blinker debouncer
-        //   \/
-        clearInterval(htmlFocus.interval);
-        clearTimeout(htmlFocus.timeout);
-        //  will make caret visible when any key's pressed
-        htmlFocus.caret = true;
-        htmlFocus.timeout = setTimeout(function () {
-            //  caret blinker
-            htmlFocus.interval = setInterval(function () {
-                htmlFocus.caret = !htmlFocus.caret;
-                renderHtmlCanvas();
-            }, 500);
-        }, 500);
-
-        renderHtmlCanvas();
     }
-});
+    //   ||   next lines are blinker debouncer
+    //   \/
+    clearInterval(htmlFocus.interval);
+    clearTimeout(htmlFocus.timeout);
+    //  will make caret visible when any key's pressed
+    htmlFocus.caret = true;
+    htmlFocus.timeout = setTimeout(function () {
+        //  caret blinker
+        htmlFocus.interval = setInterval(function () {
+            htmlFocus.caret = !htmlFocus.caret;
+            renderHtmlCanvas();
+        }, 500);
+    }, 500);
 
+    renderHtmlCanvas();
+});
+function shortCuts(event) {
+    //      implement select all functionality
+    if (event.key === "a") {
+        console.log("select all");
+    }
+    else if (event.key === "Backspace") {
+        // get every character before the caret
+        let charsBeforeCaret = htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI);
+        // get every character before the first NON character
+        let deleteString = charsBeforeCaret.match(/(\W*)\w*?$/)[0];
+        // for jumping line up
+        if (htmlStrings[htmlFocus.lineI].length === 0) {    // if the line is empty
+            backspace(event)
+            htmlFocus.charI = htmlStrings[htmlFocus.lineI].length
+        // for deleting the non characters
+        } else if (deleteString.length == 1) {  // if the character is not a \w
+            // console.log("First")
+            htmlStrings[htmlFocus.lineI] = charsBeforeCaret.slice(0, -1) +
+                htmlStrings[htmlFocus.lineI].slice(htmlFocus.charI);
+            htmlFocus.charI = htmlFocus.charI - deleteString.length;
+        // when line doesn't have non characters
+        } else if (htmlStrings[htmlFocus.lineI].length === deleteString.length) {
+            // console.log("Second")
+            htmlStrings[htmlFocus.lineI] = charsBeforeCaret.slice(0, -deleteString.length) +
+                htmlStrings[htmlFocus.lineI].slice(htmlFocus.charI);
+            htmlFocus.charI = htmlFocus.charI - deleteString.length+1;
+        } else {
+            // console.log("third")
+            if (/\w/g.test(deleteString[0])) {  // first character is a \w
+                htmlStrings[htmlFocus.lineI] = charsBeforeCaret.slice(0, -deleteString.length) +
+                    htmlStrings[htmlFocus.lineI].slice(htmlFocus.charI)
+                htmlFocus.charI = htmlFocus.charI - deleteString.length;
+            } else {
+                htmlStrings[htmlFocus.lineI] = charsBeforeCaret.slice(0, -deleteString.length+1) +
+                    htmlStrings[htmlFocus.lineI].slice(htmlFocus.charI);
+                htmlFocus.charI = htmlFocus.charI - deleteString.length +1;
+            }
+        }
+    }
+    // .match(/.*?\W+?/)        // match from the beginning
+} 
 function backspace(event) {
     let currentLine = htmlStrings[htmlFocus.lineI];
     let previousLine = htmlStrings[htmlFocus.lineI-1]
@@ -223,7 +255,7 @@ function backspace(event) {
         htmlStrings.splice(htmlFocus.lineI, 1);
         //  move coordinates of all lines after lineIndex 
         if (htmlFocus.lineI < htmlRecordedCords.length) {  //      not the last line
-            backspace.moveCoords()
+            backspace.moveCoordsUp()
         }
         htmlFocus.lineI--;
         htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
@@ -241,7 +273,7 @@ function backspace(event) {
                 //  delete coords and string of the line 
                 htmlRecordedCords.splice(htmlFocus.lineI, 1);
                 htmlStrings.splice(htmlFocus.lineI, 1);
-                backspace.moveCoords()
+                backspace.moveCoordsUp()
                 htmlFocus.lineI--
                 htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
                 return
@@ -262,7 +294,7 @@ function backspace(event) {
         htmlFocus.charI--;
     }
 }
-backspace.moveCoords = function moveCoords() {
+backspace.moveCoordsUp = function moveCoords() {
     //  this function moves strings', that are after the current line,
     //  coordinates UP
     htmlRecordedCords = [
@@ -352,7 +384,7 @@ function lostFocus() {
     clearInterval(htmlFocus.timeout);
     renderHtmlCanvas();
 }
-window.addEventListener("click", function (event) {
+addEventListener("click", function (event) {
     if (event.target != htmlCanvas) {
         // lostFocus();
     }
