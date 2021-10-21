@@ -7,9 +7,21 @@ let universalValue = 25*scale;
 const HC = htmlCanvas.getContext("2d");
 const CC = cssCanvas.getContext("2d");
 const JC = jsCanvas.getContext("2d");
-let htmlCurrentScroll = 0;
+let htmlCurrentScrollX = 0;
+let htmlCurrentScrollY = 0;
 let htmlRecordedCords = [[ 6, 35 ], [ 31, 60 ], [ 56, 85 ], [ 81, 110 ], [ 106, 135 ], [ 131, 160 ], [ 156, 185 ], [ 181, 210 ], [ 206, 235 ]];
-let htmlStrings = [ "Hello, World!", "fgh-hmf", "f", "dgdh,sFgz;dhtxycukv", "fsdfsgrdhfcg", "gsrgfcgh", "gfdzxcbng", "", "" ]
+// let htmlStrings = [ "Hello, World!", "fgh-hmf", "f", "dgdh,sFgz;dhtxycukv", "fsdfsgrdhfcg", "gsrgfcgh", "gfdzxcbng", "", "" ]
+let htmlStrings = [
+    `if (charS <= j && j < charE) {`,
+    `  HC.fillRect(HC.measureText(`,
+    `    htmlStrings[i].slice(0, j)).width + textStart,`,
+    `    htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,`,
+    `    10, `,
+    `    universalValue`,
+    `  );`,
+    `};`,
+    ''
+];
 htmlRecordedCords =  htmlRecordedCords.map((arr) => [
     arr[0]*scale,
     arr[1]*scale,
@@ -17,18 +29,22 @@ htmlRecordedCords =  htmlRecordedCords.map((arr) => [
 // let htmlRecordedCords = [[universalValue+ (- 9 - 10)*scale, universalValue+( + 10)*scale]];
 // let htmlStrings = ["Hello, World!"];
 let htmlFocus = {
-    status: false,  // is focused
+    isFocused: false,
     lineI: 0,           //  line index
-    charI: null,        //  character index
-    caret: true,        //  that blinking thinggy
-    interval: false,    //  for caret blinking
-    timeout: null,      //  for caret debouncer
+    charI: 0,        //  character index
+    showCaret: true,        //  that blinking thinggy
+    interval: 0,    //  for caret blinking
+    timeout: 0,      //  for caret debouncer
+    isSelected: false,
+    selCoords: [[0, 0], [0, 0]], // [lineS, charS], [lineE, charE]
+    // selCoords: [[1,3], [4,6]], // [lineS, charS], [lineE, charE]
 };
 
 const COMPUTED_STYLES = getComputedStyle(document.body);
 let lineNumberColor = COMPUTED_STYLES.getPropertyValue("--editor-line-number-color");
 let lineFocusColor = COMPUTED_STYLES.getPropertyValue("--editor-line-focus-color");
 let textColor = COMPUTED_STYLES.getPropertyValue("--editor-text-color");
+let textSelectionColor = COMPUTED_STYLES.getPropertyValue("--editor-text-selection-color");
 let caretColor = COMPUTED_STYLES.getPropertyValue("--editor-caret-color");
 
 let textStart = 45*scale;   // 55 for 1000+ lines, 45 for 100+ lines
@@ -39,8 +55,10 @@ window.addEventListener("resize",renderHtmlCanvas);
 
 function resetHtmlCanvas() {
     let { width, height } = htmlCanvas.getClientRects()[0];
-    htmlCanvas.width = width*scale;
-    htmlCanvas.height = height*scale;
+    // htmlCanvas.width = width*scale;
+    // htmlCanvas.height = height*scale;
+    htmlCanvas.width = width;
+    htmlCanvas.height = height;
 }
 function renderHtmlCanvas() {
     resetHtmlCanvas();
@@ -50,46 +68,167 @@ function renderHtmlCanvas() {
     for (let i = 0; i < htmlRecordedCords.length; i++) {
         //  line numbers
         HC.fillStyle = lineNumberColor;
-        if (htmlFocus.lineI == i && htmlFocus.status) HC.fillStyle = '#fe0';    // highlight focused line number
+        if (htmlFocus.lineI == i && htmlFocus.isFocused) HC.fillStyle = '#fe0';    // highlight focused line number
         HC.fillText(
             i + 1, 
             numberStart + (- 8 - 13 - (i+1 < 10 ? 0 : 10*((Math.ceil((i + 1)/10)+'').length)))*scale,
-            htmlRecordedCords[i][0] + htmlCurrentScroll + universalValue
+            htmlRecordedCords[i][0] + htmlCurrentScrollX + universalValue
         );
         //  contents of strings
         HC.fillStyle = textColor;
         HC.fillText(
             htmlStrings[i],
             textStart,
-            htmlRecordedCords[i][0] + htmlCurrentScroll + universalValue
+            htmlRecordedCords[i][0] + htmlCurrentScrollX + universalValue
         );
     }
     HC.fillStyle = lineFocusColor;
     //  line number splitter
     HC.fillRect(numberStart - 8*scale, 0, 1*scale, htmlCanvas.height);
-    if (htmlFocus.status) {
+    if (htmlFocus.isFocused) {
         //  the focused on line
-        HC.fillRect(0, htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScroll + 8*scale,
+        HC.fillRect(0, htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale,
             numberStart - 8*scale ,universalValue
         );
         //  caret
-        if (htmlFocus.caret) {
+        if (htmlFocus.showCaret) {
             HC.fillStyle = caretColor;
             HC.fillRect(HC.measureText(
-                    htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI === null ? undefined : htmlFocus.charI)
+                htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI === null ? undefined : htmlFocus.charI)
                 ).width + textStart,
-                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScroll + 8*scale,
-                1*scale, universalValue
+                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale,
+                1*scale, 
+                universalValue
             );
         }
     }
+    if (htmlFocus.isSelected) {
+        let lineS = htmlFocus.selCoords[0][0];  // start
+        let charS = htmlFocus.selCoords[0][1];
+        let lineE = htmlFocus.selCoords[1][0];  // end
+        let charE = htmlFocus.selCoords[1][1];
+        for(let i = 0; i < htmlStrings.length; i++) {
+            for (let j = 0; j < htmlStrings[i].length+1; j++) {
+                if (lineS <= i && i <= lineE) {
+                    HC.fillStyle = textSelectionColor;
+                    if (lineS === lineE) {
+                        if (charS <= j && j < charE) {
+                            HC.fillRect(HC.measureText(
+                                htmlStrings[i].slice(0, j)).width + textStart,
+                                htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,
+                                10, 
+                                universalValue
+                            );
+                        }
+                    } else if (i === lineS) {
+                        if (charS <= j) {
+                            HC.fillRect(HC.measureText(
+                                htmlStrings[i].slice(0, j)).width + textStart,
+                                htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,
+                                10, 
+                                universalValue
+                            );
+                        }
+                    } else if (i === lineE) {
+                        if (j < charE) {
+                            HC.fillRect(HC.measureText(
+                                htmlStrings[i].slice(0, j)).width + textStart,
+                                htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,
+                                10, 
+                                universalValue
+                            );
+                        }
+                    } else {
+                        HC.fillRect(HC.measureText(
+                            htmlStrings[i].slice(0, j)).width + textStart,
+                            htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,
+                            10, 
+                            universalValue
+                        );
+                    }
+                }
+            }
+        }
+    }
+    HC.stroke()
 }
+htmlCanvas.addEventListener("dblclick", function() {
+    htmlFocus.isSelected = true
+    htmlFocus.selCoords[0][0] = htmlFocus.lineI
+    htmlFocus.selCoords[0][1] = 0
+    htmlFocus.selCoords[1][0] = htmlFocus.lineI
+    htmlFocus.selCoords[1][1] = htmlStrings[htmlFocus.lineI].length 
+    renderHtmlCanvas()
+})
+htmlCanvas.addEventListener("mousedown", function(event) {
+    function onMouseMove(event) {
+        htmlFocus.isSelected = true;
+        let coordsY = htmlRecordedCords.find(
+            (value) =>
+                value[0] < event.layerY*scale + Math.abs(htmlCurrentScrollX) &&
+                value[1] > event.layerY*scale + Math.abs(htmlCurrentScrollX)
+                ) || 0;
+        //if clicked at the empty spot of the canvas, focus on the last line
+        if (coordsY) {
+            htmlFocus.lineI = htmlRecordedCords.indexOf(coordsY);
+            let currentLine = htmlStrings[htmlFocus.lineI]
+            let currentLineLength = HC.measureText(currentLine).width + textStart;
+            let clickPoint = event.layerX*scale
+            if (clickPoint <= currentLineLength) {
+                for (let i = 0; i < currentLineLength; i++) {
+                    if (HC.measureText(currentLine.slice(0, i)).width + textStart - 5*scale < clickPoint &&
+                        HC.measureText(currentLine.slice(0, i)).width + textStart + 5*scale > clickPoint){
+                        htmlFocus.charI = i;
+
+                        break
+                    }
+                }
+            } else {
+                htmlFocus.charI = currentLine.length;
+            }
+        } else {
+            //  focus on the end of the line
+            htmlFocus.lineI = htmlRecordedCords.length - 1;
+            htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
+        }
+        // if (htmlFocus.selCoords[0][0] > htmlFocus.lineI) {
+        //     console.log("here")
+        //     console.log(htmlFocus.selCoords)
+        //     htmlFocus.selCoords[0] = htmlFocus.selCoords[1];
+        //     htmlFocus.selCoords[1] = [
+        //         htmlFocus.lineI,
+        //         htmlFocus.charI
+        //     ];
+        // } else {}
+        // if (htmlFocus.selCoords[0][0] > htmlFocus.selCoords[1][0]) {
+        //     htmlFocus.selCoords[0] = [
+        //         htmlFocus.lineI,
+        //         htmlFocus.charI
+        //     ];
+        // } else {
+        // }
+        htmlFocus.selCoords[1] = [
+            htmlFocus.lineI,
+            htmlFocus.charI
+        ];
+        // if (htmlFocus.selCoords[0][0] > htmlFocus.selCoords[1][0]) {
+        //     htmlFocus.selCoords = [htmlFocus.selCoords[1], htmlFocus.selCoords[0]]
+        // }
+        renderHtmlCanvas()
+    }
+    function onMouseUp(event) {
+        htmlCanvas.removeEventListener("mousemove", onMouseMove)
+        htmlCanvas.removeEventListener("mouseup", onMouseUp)    
+    }
+    htmlCanvas.addEventListener("mousemove", onMouseMove)
+    htmlCanvas.addEventListener("mouseup", onMouseUp)
+})
 
 //  canvas scrolling
 htmlCanvas.addEventListener("wheel", function (event) {
     // console.log(event)
-    htmlCurrentScroll -= event.deltaY * 0.35*scale;
-    if (htmlCurrentScroll > 0) htmlCurrentScroll = 0;
+    htmlCurrentScrollX -= event.deltaY * 0.35*scale;
+    if (htmlCurrentScrollX > 0) htmlCurrentScrollX = 0;
     renderHtmlCanvas();
 });
 
@@ -100,7 +239,7 @@ document.addEventListener("keydown", function (event) {
     if (event.ctrlKey) {
         shortCuts(event)
     }
-    else if (htmlFocus.status) {
+    else if (htmlFocus.isFocused) {
         event.preventDefault();
         if (/^arrow/i.test(event.key)) {
             if (event.key === "ArrowUp" && htmlFocus.lineI >= 0) {
@@ -189,11 +328,11 @@ document.addEventListener("keydown", function (event) {
     clearInterval(htmlFocus.interval);
     clearTimeout(htmlFocus.timeout);
     //  will make caret visible when any key's pressed
-    htmlFocus.caret = true;
+    htmlFocus.showCaret = true;
     htmlFocus.timeout = setTimeout(function () {
         //  caret blinker
         htmlFocus.interval = setInterval(function () {
-            htmlFocus.caret = !htmlFocus.caret;
+            htmlFocus.showCaret = !htmlFocus.showCaret;
             renderHtmlCanvas();
         }, 500);
     }, 500);
@@ -211,10 +350,14 @@ function shortCuts(event) {
         // get every character before the first NON character
         let deleteString = charsBeforeCaret.match(/(\W*)\w*?$/)[0];
         // for jumping line up
-        if (htmlStrings[htmlFocus.lineI].length === 0) {    // if the line is empty
+        if (htmlFocus.charI === 0) {    // when caret is at the very beginning
+            let placeholder = htmlStrings[htmlFocus.lineI-1].length;
             backspace(event)
-            htmlFocus.charI = htmlStrings[htmlFocus.lineI].length
+            htmlFocus.charI = placeholder;
         // for deleting the non characters
+        } else if (htmlStrings[htmlFocus.lineI].length === 0){    // if the line is emtpy
+            backspace()
+            htmlFocus.charI = htmlStrings[htmlFocus.lineI].length
         } else if (deleteString.length == 1) {  // if the character is not a \w
             // console.log("First")
             htmlStrings[htmlFocus.lineI] = charsBeforeCaret.slice(0, -1) +
@@ -309,12 +452,12 @@ backspace.moveCoordsUp = function moveCoords() {
 }
 
 //  focus on a certain line
-htmlCanvas.addEventListener("click", function (event) {
+htmlCanvas.addEventListener("mousedown", function (event) {
     //  find whether clicked place is in recorded cords
     let coordsY = htmlRecordedCords.find(
                     (value) =>
-                        value[0] < event.layerY*scale + Math.abs(htmlCurrentScroll) &&
-                        value[1] > event.layerY*scale + Math.abs(htmlCurrentScroll)
+                        value[0] < event.layerY*scale + Math.abs(htmlCurrentScrollX) &&
+                        value[1] > event.layerY*scale + Math.abs(htmlCurrentScrollX)
                 ) || 0;
     //if clicked at the empty spot of the canvas, focus on the last line
     if (coordsY) {
@@ -338,33 +481,15 @@ htmlCanvas.addEventListener("click", function (event) {
         htmlFocus.lineI = htmlRecordedCords.length - 1;
         htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
     }
-
-    // let count = 0;
-    // !function binaryCoordsSearch(string, startIndex) {
-    //     count ++
-    //     let firstHalf = string.slice(0, Math.floor(string.length/2))
-    //     let secondHalf = string.slice(Math.floor(string.length/2))
-    //     // console.log(HC.measureText(firstHalf).width)
-    //     // console.log(HC.measureText(firstHalf).width + HC.measureText(secondHalf).width)
-    //     console.log("clicked", clickPoint)
-    //     let stIndex = 0;
-    //     let firstHalfLength = HC.measureText(firstHalf).width + textStart
-    //     let chosenHalf;
-    //     // if (firstHalfLength > clickPoint){
-    //     //     chosenHalf = firstHalf
-
-    //     // } else if (firstHalfLength + 10 > clickPoint && firstHalfLength - 10 < clickPoint){
-    //     //     console.log("G O T   I T !")
-    //     //     console.log(firstHalfLength)
-    //     //     return
-    //     // }
-    //     console.log()
-    // }(currentLine, 0)
-            
-
-    htmlFocus.status = true;
+    //  set selection starting point
+    htmlFocus.selCoords[0] = [
+        htmlFocus.lineI,
+        htmlFocus.charI
+    ];
+    htmlFocus.isSelected = false;
+    htmlFocus.isFocused = true;
     //  first render the caret will be visible
-    htmlFocus.caret = true;
+    htmlFocus.showCaret = true;
 
     renderHtmlCanvas();
     //  next 6 lines is caret blinker
@@ -372,14 +497,14 @@ htmlCanvas.addEventListener("click", function (event) {
     clearTimeout(htmlFocus.timeout);
     htmlFocus.interval = setInterval(function () {
         //     blink, blink, blink
-        htmlFocus.caret = !htmlFocus.caret;
+        htmlFocus.showCaret = !htmlFocus.showCaret;
         renderHtmlCanvas();
     }, 500);
 });
 
 // to loose focus from canvases
 function lostFocus() {
-    htmlFocus.status = false;
+    htmlFocus.isFocused = false;
     clearInterval(htmlFocus.interval);
     clearInterval(htmlFocus.timeout);
     renderHtmlCanvas();
