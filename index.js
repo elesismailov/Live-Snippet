@@ -10,13 +10,12 @@ const JC = jsCanvas.getContext("2d");
 let htmlCurrentScrollX = 0;
 let htmlCurrentScrollY = 0;
 let htmlRecordedCords = [[ 6, 35 ], [ 31, 60 ], [ 56, 85 ], [ 81, 110 ], [ 106, 135 ], [ 131, 160 ], [ 156, 185 ], [ 181, 210 ], [ 206, 235 ]];
-// let htmlStrings = [ "Hello, World!", "fgh-hmf", "f", "dgdh,sFgz;dhtxycukv", "fsdfsgrdhfcg", "gsrgfcgh", "gfdzxcbng", "", "" ]
 let htmlStrings = [
     `if (charS <= j && j < charE) {`,
     `  HC.fillRect(HC.measureText(`,
     `    htmlStrings[i].slice(0, j)).width + textStart,`,
     `    htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,`,
-    `    10, `,
+    `    10,`,
     `    universalValue`,
     `  );`,
     `};`,
@@ -36,8 +35,8 @@ let htmlFocus = {
     interval: 0,    //  for caret blinking
     timeout: 0,      //  for caret debouncer
     isSelected: false,
-    selCoords: [[0, 0], [0, 0]], // [lineS, charS], [lineE, charE]
-    // selCoords: [[1,3], [4,6]], // [lineS, charS], [lineE, charE]
+    isSelecting: false,
+    selectedCoords: [[0, 0], [0, 0]], // [lineS, charS], [lineE, charE]
 };
 
 const COMPUTED_STYLES = getComputedStyle(document.body);
@@ -86,83 +85,96 @@ function renderHtmlCanvas() {
     //  line number splitter
     HC.fillRect(numberStart - 8*scale, 0, 1*scale, htmlCanvas.height);
     if (htmlFocus.isFocused) {
-        //  the focused on line
+        //  focus on a line
         HC.fillRect(0, htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale,
             numberStart - 8*scale ,universalValue
         );
         //  caret
         if (htmlFocus.showCaret) {
             HC.fillStyle = caretColor;
-            HC.fillRect(HC.measureText(
+            // HC.fillRect(HC.measureText(
+            //     htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI === null ? undefined : htmlFocus.charI)
+            //     ).width + textStart,
+            //     htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale,
+            //     1*scale, 
+            //     universalValue
+            // );
+            HC.strokeStyle = caretColor;
+            // HC.lineWidth = 0.5;
+            HC.moveTo(HC.measureText(
                 htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI === null ? undefined : htmlFocus.charI)
                 ).width + textStart,
-                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale,
-                1*scale, 
-                universalValue
-            );
+                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale)
+            HC.lineTo(HC.measureText(
+                htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI === null ? undefined : htmlFocus.charI)
+                ).width + textStart,
+                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale + universalValue)
         }
     }
     if (htmlFocus.isSelected) {
-        let lineS = htmlFocus.selCoords[0][0];  // start
-        let charS = htmlFocus.selCoords[0][1];
-        let lineE = htmlFocus.selCoords[1][0];  // end
-        let charE = htmlFocus.selCoords[1][1];
+        let lineS = htmlFocus.selectedCoords[0][0];  // start
+        let charS = htmlFocus.selectedCoords[0][1];
+        let lineE = htmlFocus.selectedCoords[1][0];  // end
+        let charE = htmlFocus.selectedCoords[1][1];
+        // draw a rectangle on each character
+        function draw(i,j) {
+            HC.fillRect(HC.measureText(
+                htmlStrings[i].slice(0, j)).width + textStart,
+                htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,
+                10, 
+                universalValue
+            );}
         for(let i = 0; i < htmlStrings.length; i++) {
             for (let j = 0; j < htmlStrings[i].length+1; j++) {
+                // for selection downward
                 if (lineS <= i && i <= lineE) {
                     HC.fillStyle = textSelectionColor;
                     if (lineS === lineE) {
-                        if (charS <= j && j < charE) {
-                            HC.fillRect(HC.measureText(
-                                htmlStrings[i].slice(0, j)).width + textStart,
-                                htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,
-                                10, 
-                                universalValue
-                            );
-                        }
+                        if (charS <= j && j < charE) {draw(i,j)}
                     } else if (i === lineS) {
-                        if (charS <= j) {
-                            HC.fillRect(HC.measureText(
-                                htmlStrings[i].slice(0, j)).width + textStart,
-                                htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,
-                                10, 
-                                universalValue
-                            );
-                        }
+                        if (charS <= j) {draw(i,j)}
                     } else if (i === lineE) {
-                        if (j < charE) {
-                            HC.fillRect(HC.measureText(
-                                htmlStrings[i].slice(0, j)).width + textStart,
-                                htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,
-                                10, 
-                                universalValue
-                            );
-                        }
-                    } else {
-                        HC.fillRect(HC.measureText(
-                            htmlStrings[i].slice(0, j)).width + textStart,
-                            htmlRecordedCords[i][0] + htmlCurrentScrollX + 8*scale,
-                            10, 
-                            universalValue
-                        );
-                    }
+                        if (j < charE) {draw(i,j)}
+                    } else {draw(i,j)}
+                }
+                // for selection upward
+                if (lineS >= i && i >= lineE) {
+                    HC.fillStyle = textSelectionColor;
+                    if (lineS === lineE) {
+                        if (charS > j && j >= charE) {draw(i,j)}
+                    } else if (i === lineS) {
+                        if (charS > j) {draw(i,j)}
+                    } else if (i === lineE) {
+                        if (j >= charE) {draw(i,j)}
+                    } else {draw(i,j)}
                 }
             }
         }
     }
     HC.stroke()
 }
+
+// select one line
+//  implement select all on quadripple click
+//  implement tripple click
 htmlCanvas.addEventListener("dblclick", function() {
     htmlFocus.isSelected = true
-    htmlFocus.selCoords[0][0] = htmlFocus.lineI
-    htmlFocus.selCoords[0][1] = 0
-    htmlFocus.selCoords[1][0] = htmlFocus.lineI
-    htmlFocus.selCoords[1][1] = htmlStrings[htmlFocus.lineI].length 
+    htmlFocus.isSelecting = true
+    htmlFocus.selectedCoords[0][0] = htmlFocus.lineI
+    htmlFocus.selectedCoords[0][1] = 0
+    htmlFocus.selectedCoords[1][0] = htmlFocus.lineI+1
+    htmlFocus.selectedCoords[1][1] = 0
+    htmlFocus.lineI++
+    htmlFocus.charI = 0
     renderHtmlCanvas()
 })
+
+// mouse selection
 htmlCanvas.addEventListener("mousedown", function(event) {
     function onMouseMove(event) {
+        htmlFocus.showCaret = true
         htmlFocus.isSelected = true;
+        htmlFocus.isSelecting = true;
         let coordsY = htmlRecordedCords.find(
             (value) =>
                 value[0] < event.layerY*scale + Math.abs(htmlCurrentScrollX) &&
@@ -179,7 +191,6 @@ htmlCanvas.addEventListener("mousedown", function(event) {
                     if (HC.measureText(currentLine.slice(0, i)).width + textStart - 5*scale < clickPoint &&
                         HC.measureText(currentLine.slice(0, i)).width + textStart + 5*scale > clickPoint){
                         htmlFocus.charI = i;
-
                         break
                     }
                 }
@@ -191,37 +202,18 @@ htmlCanvas.addEventListener("mousedown", function(event) {
             htmlFocus.lineI = htmlRecordedCords.length - 1;
             htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
         }
-        // if (htmlFocus.selCoords[0][0] > htmlFocus.lineI) {
-        //     console.log("here")
-        //     console.log(htmlFocus.selCoords)
-        //     htmlFocus.selCoords[0] = htmlFocus.selCoords[1];
-        //     htmlFocus.selCoords[1] = [
-        //         htmlFocus.lineI,
-        //         htmlFocus.charI
-        //     ];
-        // } else {}
-        // if (htmlFocus.selCoords[0][0] > htmlFocus.selCoords[1][0]) {
-        //     htmlFocus.selCoords[0] = [
-        //         htmlFocus.lineI,
-        //         htmlFocus.charI
-        //     ];
-        // } else {
-        // }
-        htmlFocus.selCoords[1] = [
+        htmlFocus.selectedCoords[1] = [
             htmlFocus.lineI,
             htmlFocus.charI
         ];
-        // if (htmlFocus.selCoords[0][0] > htmlFocus.selCoords[1][0]) {
-        //     htmlFocus.selCoords = [htmlFocus.selCoords[1], htmlFocus.selCoords[0]]
-        // }
         renderHtmlCanvas()
     }
     function onMouseUp(event) {
-        htmlCanvas.removeEventListener("mousemove", onMouseMove)
-        htmlCanvas.removeEventListener("mouseup", onMouseUp)    
+        document.removeEventListener("mousemove", onMouseMove)
+        document.removeEventListener("mouseup", onMouseUp)    
     }
-    htmlCanvas.addEventListener("mousemove", onMouseMove)
-    htmlCanvas.addEventListener("mouseup", onMouseUp)
+    document.addEventListener("mousemove", onMouseMove)
+    document.addEventListener("mouseup", onMouseUp)
 })
 
 //  canvas scrolling
@@ -241,36 +233,67 @@ document.addEventListener("keydown", function (event) {
     }
     else if (htmlFocus.isFocused) {
         event.preventDefault();
+        // for if selection is already there, don't unselect
+        if (/^.$/i.test(event.key)) {
+            htmlFocus.isSelected = false;
+        }
+        //  implement delete what's focused
+        if (htmlFocus.isSelected && event.key == "Backspace") {
+            console.log("hello delete")
+        }
         if (/^arrow/i.test(event.key)) {
+            // on shift hold, set up first point and displaying
+            if (event.shiftKey && !htmlFocus.isSelecting) {
+                htmlFocus.isSelecting = true;
+                htmlFocus.selectedCoords[0][0] = htmlFocus.lineI
+                htmlFocus.selectedCoords[0][1] = htmlFocus.charI
+            }
+            // on shift released, unselect and don't show
+            if (!event.shiftKey) {
+            htmlFocus.isSelected = false;
+            htmlFocus.isSelecting = false;
+            }
             if (event.key === "ArrowUp" && htmlFocus.lineI >= 0) {
                 if (htmlFocus.lineI > 0) {
                     htmlFocus.lineI--;
                 } else htmlFocus.charI = 0;
             } else if (event.key === "ArrowDown") {
-                if(htmlFocus.lineI !== htmlStrings.length - 1) {
+                if(htmlFocus.lineI !== htmlStrings.length - 1) {    // if not last line
                     htmlFocus.lineI++;
+                // if last, move to the very end of the line
                 } else htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
             } else if (event.key === "ArrowLeft") {
                 if (htmlFocus.charI > 0) {
                     htmlFocus.charI--
+                    // in case came from a line with bigger charIndex
                     if (htmlStrings[htmlFocus.lineI].length < htmlFocus.charI) {
+                        // and if the line is empty, move up focus
                         if (htmlStrings[htmlFocus.lineI].length == 0) {
                             htmlFocus.lineI--
                         }
                         htmlFocus.charI = htmlStrings[htmlFocus.lineI].length-1;
                     }
+                // move up
                 } else if (htmlFocus.lineI > 0) {
                     htmlFocus.lineI--
                     htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
                 }
             } else if (event.key === "ArrowRight") {
+                // if not the end of the line
                 if (htmlStrings[htmlFocus.lineI].length > htmlFocus.charI){
                     htmlFocus.charI++
-                
+                // if not the last line and end of the line
                 } else if (htmlFocus.lineI !== htmlStrings.length - 1) {
                     htmlFocus.lineI++
                     htmlFocus.charI = 0
                 }
+            }
+            // every time an arrow is pressed and shift is pressed,
+            // reset last selection point
+            if (htmlFocus.isSelecting) {
+                htmlFocus.isSelected = true;
+                htmlFocus.selectedCoords[1][0] = htmlFocus.lineI
+                htmlFocus.selectedCoords[1][1] = htmlFocus.charI
             }
         } else if (/^.$/i.test(event.key)) {
             //  insert at character index
@@ -339,12 +362,25 @@ document.addEventListener("keydown", function (event) {
 
     renderHtmlCanvas();
 });
+
+
+//  implement parse strings and log on Ctrl+C
+//  implement paste into a line and move or add on Ctrl+V
 function shortCuts(event) {
-    //      implement select all functionality
-    if (event.key === "a") {
-        console.log("select all");
+
+    //      Ctrl + A
+    if (event.ctrlKey && event.key === "a") {
+        event.preventDefault()
+        htmlFocus.selectedCoords = [[0,0], [htmlStrings.length-1, htmlStrings.slice(-1)[0].length]]
+        htmlFocus.isSelected = true;
+        htmlFocus.isSelecting = true;
+        htmlFocus.lineI = htmlStrings.length - 1;
+        htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
     }
+
+    //      Ctrl + Backspace
     else if (event.key === "Backspace") {
+        htmlFocus.isSelected = false;
         // get every character before the caret
         let charsBeforeCaret = htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI);
         // get every character before the first NON character
@@ -384,6 +420,10 @@ function shortCuts(event) {
     }
     // .match(/.*?\W+?/)        // match from the beginning
 } 
+
+
+
+
 function backspace(event) {
     let currentLine = htmlStrings[htmlFocus.lineI];
     let previousLine = htmlStrings[htmlFocus.lineI-1]
@@ -451,6 +491,10 @@ backspace.moveCoordsUp = function moveCoords() {
     ];
 }
 
+
+
+
+
 //  focus on a certain line
 htmlCanvas.addEventListener("mousedown", function (event) {
     //  find whether clicked place is in recorded cords
@@ -482,7 +526,7 @@ htmlCanvas.addEventListener("mousedown", function (event) {
         htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
     }
     //  set selection starting point
-    htmlFocus.selCoords[0] = [
+    htmlFocus.selectedCoords[0] = [
         htmlFocus.lineI,
         htmlFocus.charI
     ];
