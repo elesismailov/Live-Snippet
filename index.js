@@ -61,7 +61,7 @@ function resetHtmlCanvas() {
 }
 function renderHtmlCanvas() {
     resetHtmlCanvas();
-    HC.font = `${16*scale}px Fira Code, sans-serif`;
+    HC.font = `500 ${16*scale}px Fira Code, sans-serif`;
     // HC.fillStyle = "#fff"
     // HC.fillRect(0,0,numberStart - 8*scale,htmlCanvas.height)
     for (let i = 0; i < htmlRecordedCords.length; i++) {
@@ -180,7 +180,6 @@ htmlCanvas.addEventListener("mousedown", function(event) {
                 value[0] < event.layerY*scale + Math.abs(htmlCurrentScrollX) &&
                 value[1] > event.layerY*scale + Math.abs(htmlCurrentScrollX)
                 ) || 0;
-        //if clicked at the empty spot of the canvas, focus on the last line
         if (coordsY) {
             htmlFocus.lineI = htmlRecordedCords.indexOf(coordsY);
             let currentLine = htmlStrings[htmlFocus.lineI]
@@ -234,7 +233,7 @@ document.addEventListener("keydown", function (event) {
     else if (htmlFocus.isFocused) {
         event.preventDefault();
         // for if selection is already there, don't unselect
-        if (/^.$/i.test(event.key)) {
+        if (/^.$/i.test(event.key) || event.key == "Tab") {
             htmlFocus.isSelected = false;
         }
         //  implement delete what's focused
@@ -364,10 +363,9 @@ document.addEventListener("keydown", function (event) {
 });
 
 
-//  implement parse strings and log on Ctrl+C
 //  implement paste into a line and move or add on Ctrl+V
 function shortCuts(event) {
-
+    
     //      Ctrl + A
     if (event.ctrlKey && event.key === "a") {
         event.preventDefault()
@@ -378,6 +376,51 @@ function shortCuts(event) {
         htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
     }
 
+
+    // Ctrl + C
+    else if (event.ctrlKey && event.key.toLowerCase() ==="c") {
+        let copyText = "";
+        if (htmlFocus.isSelected) {
+            console.log("copy selection")
+            let coords = htmlFocus.selectedCoords;
+            // reverse the selected coords if needed
+            if (htmlFocus.selectedCoords[0][0] == htmlFocus.selectedCoords[1][0] && htmlFocus.selectedCoords[0][1] > htmlFocus.selectedCoords[1][1]) {coords.reverse()}
+            if (htmlFocus.selectedCoords[0][0] > htmlFocus.selectedCoords[1][0]){coords.reverse()};
+            let lineS = coords[0][0];  // start
+            let charS = coords[0][1];
+            let lineE = coords[1][0];  // end
+            let charE = coords[1][1];
+            // add selection to copyText
+            for (let i = 0; i < htmlStrings.length; i++) {
+                if (lineS <= i && i <= lineE) {
+                    if (lineS === i && i === lineE) {
+                        copyText += (htmlStrings[i].slice(charS, charE)) + '\n'
+                    } else if (lineS < i && i < lineE) {
+                        copyText += (htmlStrings[i]) + '\n'
+                    } else if (lineS == i) {
+                        copyText += (htmlStrings[i].slice(charS)) + '\n'
+                    } else if (lineE == i) {
+                        copyText += (htmlStrings[i].slice(0, charE)) + '\n'
+                    }
+                }
+            }
+            copyText = copyText.slice(0, -1)
+        } else {
+            copyText = htmlStrings[htmlFocus.lineI] + "\n";
+        }
+        let textArea = document.createElement("textarea");
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        textArea.value = copyText;
+        textArea.focus();
+        textArea.select();
+        document.body.appendChild(textArea);
+        navigator.clipboard.writeText(copyText)
+        document.body.removeChild(textArea);
+    }
+    
+    
     //      Ctrl + Backspace
     else if (event.key === "Backspace") {
         htmlFocus.isSelected = false;

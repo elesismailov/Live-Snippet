@@ -16,7 +16,7 @@
     --editor-line-number-color: #afa5139f;
     --editor-line-focus-color: #ffffff15;
     --editor-caret-color: #b4b6ff;
-    --editor-text-color: #ffffff;
+    --editor-text-color: #fff;
     --editor-text-selection-color: #ffffff20;
 
     --preview-background: #777;
@@ -24,7 +24,7 @@
 
 
 body {
-    background: lightgrey;
+    background: var(--editor-background);
     font-size: 18px;
     font-family: Verdana, Geneva, Tahoma, sans-serif;
 }
@@ -56,7 +56,8 @@ header {
     display: flex;
     position: absolute;
     height: 100%;
-    width: 50%;
+    // width: 50%;
+    width: 100%;
     flex-direction: column;
     > div {
         height: 100%;
@@ -106,10 +107,10 @@ header {
 }
 
 @media (min-width: 900px) {
-    #editors {
-        width: 35%;
-    }
-    #live-preview {
-        width: 65%;
-    }
+    // #editors {
+    //     width: 35%;
+    // }
+    // #live-preview {
+    //     width: 65%;
+    // }
 }
