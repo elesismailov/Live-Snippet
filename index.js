@@ -56,12 +56,16 @@ function resetHtmlCanvas() {
     let { width, height } = htmlCanvas.getClientRects()[0];
     // htmlCanvas.width = width*scale;
     // htmlCanvas.height = height*scale;
-    htmlCanvas.width = width;
-    htmlCanvas.height = height;
+    // htmlCanvas.width = width;
+    // htmlCanvas.height = height;
+    let sc = 2;
+    htmlCanvas.width = htmlCanvas.clientWidth*sc;
+    htmlCanvas.height = htmlCanvas.clientHeight*sc;
+    HC.scale(sc,sc)
 }
 function renderHtmlCanvas() {
     resetHtmlCanvas();
-    HC.font = `500 ${16*scale}px Fira Code, sans-serif`;
+    HC.font = `300 ${16*scale}px Fira Code, sans-serif`;
     // HC.fillStyle = "#fff"
     // HC.fillRect(0,0,numberStart - 8*scale,htmlCanvas.height)
     for (let i = 0; i < htmlRecordedCords.length; i++) {
@@ -235,10 +239,6 @@ document.addEventListener("keydown", function (event) {
         // for if selection is already there, don't unselect
         if (/^.$/i.test(event.key) || event.key == "Tab") {
             htmlFocus.isSelected = false;
-        }
-        //  implement delete what's focused
-        if (htmlFocus.isSelected && event.key == "Backspace") {
-            console.log("hello delete")
         }
         if (/^arrow/i.test(event.key)) {
             // on shift hold, set up first point and displaying
@@ -470,8 +470,36 @@ function shortCuts(event) {
 function backspace(event) {
     let currentLine = htmlStrings[htmlFocus.lineI];
     let previousLine = htmlStrings[htmlFocus.lineI-1]
-    //      jump one line up
-    if (htmlFocus.charI === 0 && htmlFocus.lineI > 0) {
+    if (htmlFocus.isSelected) {
+        let coords = htmlFocus.selectedCoords;
+        if (htmlFocus.selectedCoords[0][0] == htmlFocus.selectedCoords[1][0] && htmlFocus.selectedCoords[0][1] > htmlFocus.selectedCoords[1][1]) {coords.reverse()}
+        if (htmlFocus.selectedCoords[0][0] > htmlFocus.selectedCoords[1][0]){coords.reverse()};
+        let lineS = coords[0][0];  // start
+        let charS = coords[0][1];
+        let lineE = coords[1][0];  // end
+        let charE = coords[1][1];
+        if (lineS === lineE) {
+            htmlStrings[lineE] = htmlStrings[lineE].slice(0, charS) + htmlStrings[lineE].slice(charE);
+        } else if (lineS-lineE === -1){
+            htmlStrings[lineS] = htmlStrings[lineS].slice(0, charS) + htmlStrings[lineE].slice(charE);
+            htmlRecordedCords.splice(lineE, 1);
+            htmlStrings.splice(lineE, 1);
+            htmlFocus.lineI = lineE
+            backspace.moveCoordsUp()
+        } else {
+            htmlStrings[lineS] = htmlStrings[lineS].slice(0, charS) + htmlStrings[lineE].slice(charE);
+            htmlRecordedCords.splice(lineS+1, lineE - lineS);
+            htmlStrings.splice(lineS+1, lineE - lineS);
+            for (let i = 0; i < lineE - lineS; i++) {
+                htmlFocus.lineI = lineS+1
+                backspace.moveCoordsUp()
+            }
+        }
+        htmlFocus.isSelected = false;
+        htmlFocus.isSelecting = false;
+        htmlFocus.charI = charS;
+        htmlFocus.lineI = lineS;
+    } else if (htmlFocus.charI === 0 && htmlFocus.lineI > 0) {
         //  moving up line and concatenating it with the previous one
         if (htmlStrings[htmlFocus.lineI].length) {
             htmlStrings[htmlFocus.lineI-1] += htmlStrings[htmlFocus.lineI]
