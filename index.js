@@ -237,8 +237,12 @@ document.addEventListener("keydown", function (event) {
     else if (htmlFocus.isFocused) {
         event.preventDefault();
         // for if selection is already there, don't unselect
-        if (/^.$/i.test(event.key) || event.key == "Tab") {
-            htmlFocus.isSelected = false;
+        if (/^.$/i.test(event.key) || event.key == "Tab" || event.key == "Enter") {
+            if (htmlFocus.isSelected) {
+                backspace()
+            } else {
+                htmlFocus.isSelected = false;
+            }
         }
         if (/^arrow/i.test(event.key)) {
             // on shift hold, set up first point and displaying
