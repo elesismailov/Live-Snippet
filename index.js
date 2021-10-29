@@ -41,6 +41,7 @@ let htmlFocus = {
 
 const COMPUTED_STYLES = getComputedStyle(document.body);
 let lineNumberColor = COMPUTED_STYLES.getPropertyValue("--editor-line-number-color");
+let lineNumberFocusColor = COMPUTED_STYLES.getPropertyValue("--editor-line-number-focus-color");
 let lineFocusColor = COMPUTED_STYLES.getPropertyValue("--editor-line-focus-color");
 let textColor = COMPUTED_STYLES.getPropertyValue("--editor-text-color");
 let textSelectionColor = COMPUTED_STYLES.getPropertyValue("--editor-text-selection-color");
@@ -71,7 +72,7 @@ function renderHtmlCanvas() {
     for (let i = 0; i < htmlRecordedCords.length; i++) {
         //  line numbers
         HC.fillStyle = lineNumberColor;
-        if (htmlFocus.lineI == i && htmlFocus.isFocused) HC.fillStyle = '#fe0';    // highlight focused line number
+        if (htmlFocus.lineI == i && htmlFocus.isFocused) HC.fillStyle = lineNumberFocusColor;    // highlight focused line number
         HC.fillText(
             i + 1, 
             numberStart + (- 8 - 13 - (i+1 < 10 ? 0 : 10*((Math.ceil((i + 1)/10)+'').length)))*scale,
@@ -96,23 +97,13 @@ function renderHtmlCanvas() {
         //  caret
         if (htmlFocus.showCaret) {
             HC.fillStyle = caretColor;
-            // HC.fillRect(HC.measureText(
-            //     htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI === null ? undefined : htmlFocus.charI)
-            //     ).width + textStart,
-            //     htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale,
-            //     1*scale, 
-            //     universalValue
-            // );
-            HC.strokeStyle = caretColor;
-            // HC.lineWidth = 0.5;
-            HC.moveTo(HC.measureText(
+            HC.fillRect(HC.measureText(
                 htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI === null ? undefined : htmlFocus.charI)
                 ).width + textStart,
-                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale)
-            HC.lineTo(HC.measureText(
-                htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI === null ? undefined : htmlFocus.charI)
-                ).width + textStart,
-                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale + universalValue)
+                htmlRecordedCords[htmlFocus.lineI][0] + htmlCurrentScrollX + 8*scale,
+                1*scale, 
+                universalValue
+            );
         }
     }
     if (htmlFocus.isSelected) {
@@ -245,6 +236,44 @@ document.addEventListener("keydown", function (event) {
             }
         }
         if (/^arrow/i.test(event.key)) {
+            // a variable for not unselecting
+            let isMoving = false;
+            //  Move line up/down
+            if (event.altKey) {
+                isMoving = true
+                let coords = htmlFocus.selectedCoords;
+                if (htmlFocus.selectedCoords[0][0] == htmlFocus.selectedCoords[1][0] && htmlFocus.selectedCoords[0][1] > htmlFocus.selectedCoords[1][1]) {coords.reverse()}
+                if (htmlFocus.selectedCoords[0][0] > htmlFocus.selectedCoords[1][0]){coords.reverse()};
+                htmlFocus.selectedCoords = coords;
+                let lineS = coords[0][0];  // start
+                let lineE = coords[1][0];  // end
+                // move only one line
+                if ( !htmlFocus.isSelected || lineS === lineE ) {
+                    if (event.key === "ArrowUp" && htmlFocus.lineI -1 !== -1) {
+                        [htmlStrings[htmlFocus.lineI], htmlStrings[htmlFocus.lineI - 1]] = [htmlStrings[htmlFocus.lineI - 1], htmlStrings[htmlFocus.lineI]]
+                    } else if (event.key === "ArrowDown" && htmlFocus.lineI +1 !== htmlStrings.length) {
+                        [htmlStrings[htmlFocus.lineI], htmlStrings[htmlFocus.lineI + 1]] = [htmlStrings[htmlFocus.lineI + 1], htmlStrings[htmlFocus.lineI]]
+                    }
+                } else {
+                    if (event.key === "ArrowUp" && lineS -1 !== -1) {
+                        let nextLine = htmlStrings[lineS-1]
+                        htmlStrings.splice(lineS-1, lineE+1 - lineS, ...htmlStrings.slice(lineS, lineE+1))
+                        htmlStrings[lineE] = nextLine
+                    } else if (event.key === "ArrowDown" && lineE +1 !== htmlStrings.length) {
+                        let nextLine = htmlStrings[lineE+1]
+                        htmlStrings.splice(lineS+1, lineE+1 - lineS, ...htmlStrings.slice(lineS, lineE+1))
+                        htmlStrings[lineS] = nextLine
+                    }
+                }
+                // move selection along with strings
+                if (event.key === "ArrowUp" && lineS -1 !== -1) {
+                    htmlFocus.selectedCoords[0][0]--;
+                    htmlFocus.selectedCoords[1][0]--;
+                } else if (event.key === "ArrowDown" && lineE +1 !== htmlStrings.length) {
+                    htmlFocus.selectedCoords[0][0]++;
+                    htmlFocus.selectedCoords[1][0]++;
+                }
+            }
             // on shift hold, set up first point and displaying
             if (event.shiftKey && !htmlFocus.isSelecting) {
                 htmlFocus.isSelecting = true;
@@ -252,20 +281,36 @@ document.addEventListener("keydown", function (event) {
                 htmlFocus.selectedCoords[0][1] = htmlFocus.charI
             }
             // on shift released, unselect and don't show
-            if (!event.shiftKey) {
-            htmlFocus.isSelected = false;
-            htmlFocus.isSelecting = false;
+            if (!event.shiftKey && !isMoving) {
+                htmlFocus.isSelected = false;
+                htmlFocus.isSelecting = false;
             }
             if (event.key === "ArrowUp" && htmlFocus.lineI >= 0) {
                 if (htmlFocus.lineI > 0) {
                     htmlFocus.lineI--;
-                } else htmlFocus.charI = 0;
+                    // if (htmlFocus.selectedCoords[0][0] === 0 && 
+                    //     htmlFocus.lineI !== htmlFocus.selectedCoords[1][0] && 
+                    //     htmlFocus.lineI !== 0) {
+                    //         htmlFocus.lineI++;
+                    // }
+                } else if (!event.altKey) {
+                    htmlFocus.charI = 0;
+                }
             } else if (event.key === "ArrowDown") {
                 if(htmlFocus.lineI !== htmlStrings.length - 1) {    // if not last line
                     htmlFocus.lineI++;
+                    // if (htmlFocus.selectedCoords[1][0] +1 === htmlStrings.length && 
+                    //     htmlFocus.lineI !== htmlFocus.selectedCoords[0][0] && 
+                    //     htmlFocus.lineI !== htmlStrings.length - 1) {
+                    //         htmlFocus.lineI--;
+                    // }
+                    // && htmlFocus.selectedCoords[1][0] !== htmlStrings.length
+                    // if (isMoving && htmlFocus.selectedCoords)
                 // if last, move to the very end of the line
-                } else htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
-            } else if (event.key === "ArrowLeft") {
+                } else if (!event.altKey) {
+                    htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
+                }
+            } else if (event.key === "ArrowLeft" && !event.altKey) {
                 if (htmlFocus.charI > 0) {
                     htmlFocus.charI--
                     // in case came from a line with bigger charIndex
@@ -281,7 +326,7 @@ document.addEventListener("keydown", function (event) {
                     htmlFocus.lineI--
                     htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
                 }
-            } else if (event.key === "ArrowRight") {
+            } else if (event.key === "ArrowRight" && !event.altKey) {
                 // if not the end of the line
                 if (htmlStrings[htmlFocus.lineI].length > htmlFocus.charI){
                     htmlFocus.charI++
@@ -293,8 +338,9 @@ document.addEventListener("keydown", function (event) {
             }
             // every time an arrow is pressed and shift is pressed,
             // reset last selection point
-            if (htmlFocus.isSelecting) {
+            if (htmlFocus.isSelecting && !isMoving) {
                 htmlFocus.isSelected = true;
+
                 htmlFocus.selectedCoords[1][0] = htmlFocus.lineI
                 htmlFocus.selectedCoords[1][1] = htmlFocus.charI
             }
@@ -381,11 +427,10 @@ function shortCuts(event) {
     }
 
 
-    // Ctrl + C
+    //      Ctrl + C
     else if (event.ctrlKey && event.key.toLowerCase() ==="c") {
         let copyText = "";
         if (htmlFocus.isSelected) {
-            console.log("copy selection")
             let coords = htmlFocus.selectedCoords;
             // reverse the selected coords if needed
             if (htmlFocus.selectedCoords[0][0] == htmlFocus.selectedCoords[1][0] && htmlFocus.selectedCoords[0][1] > htmlFocus.selectedCoords[1][1]) {coords.reverse()}
