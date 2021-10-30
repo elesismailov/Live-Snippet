@@ -59,7 +59,7 @@ function resetHtmlCanvas() {
     // htmlCanvas.height = height*scale;
     // htmlCanvas.width = width;
     // htmlCanvas.height = height;
-    let sc = 2;
+    let sc = 1;
     htmlCanvas.width = htmlCanvas.clientWidth*sc;
     htmlCanvas.height = htmlCanvas.clientHeight*sc;
     HC.scale(sc,sc)
@@ -217,6 +217,10 @@ htmlCanvas.addEventListener("wheel", function (event) {
     if (htmlCurrentScrollX > 0) htmlCurrentScrollX = 0;
     renderHtmlCanvas();
 });
+
+
+
+
 
 //  typing
 document.addEventListener("keydown", function (event) {
@@ -426,7 +430,35 @@ function shortCuts(event) {
         htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
     }
 
-
+    //      Ctrl + <--/-->
+    else if (event.ctrlKey && /^arrow/i.test(event.key)) {
+        htmlFocus.isSelected = false;
+        if (event.key === "ArrowLeft") {
+            // move up if reached the beginning
+            if (htmlFocus.charI === 0) {
+                htmlFocus.lineI--;
+                htmlFocus.charI = htmlStrings[htmlFocus.lineI].length;
+            // move length of the distanceString
+            } else {
+                let charsBeforeCaret = htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI);
+                //  FIX the regexp(here and backspace), doesn't work properly. It works a bit weird...
+                let distanceString = charsBeforeCaret.match(/(\W*)\w*?$/)[0];
+                htmlFocus.charI = charsBeforeCaret.length-distanceString.length;
+            }
+        } else if (event.key === "ArrowRight" ) {
+            if (htmlFocus.charI === htmlStrings[htmlFocus.lineI].length) {
+                htmlFocus.lineI++;
+                htmlFocus.charI = 0;
+            } else {
+                let charsAfterCaret = htmlStrings[htmlFocus.lineI].slice(htmlFocus.charI);
+                //  FIX the regexp(here and backspace), doesn't work properly. It works a bit wierd...
+                let distanceString = charsAfterCaret.match(/^.*?\W/)[0];
+                htmlFocus.charI = htmlFocus.charI + distanceString.length;
+            }
+        }
+    }
+    
+    
     //      Ctrl + C
     else if (event.ctrlKey && event.key.toLowerCase() ==="c") {
         let copyText = "";
@@ -471,7 +503,7 @@ function shortCuts(event) {
     
     
     //      Ctrl + Backspace
-    else if (event.key === "Backspace") {
+    else if (event.ctrlKey && event.key === "Backspace") {
         htmlFocus.isSelected = false;
         // get every character before the caret
         let charsBeforeCaret = htmlStrings[htmlFocus.lineI].slice(0, htmlFocus.charI);
@@ -487,18 +519,15 @@ function shortCuts(event) {
             backspace()
             htmlFocus.charI = htmlStrings[htmlFocus.lineI].length
         } else if (deleteString.length == 1) {  // if the character is not a \w
-            // console.log("First")
             htmlStrings[htmlFocus.lineI] = charsBeforeCaret.slice(0, -1) +
                 htmlStrings[htmlFocus.lineI].slice(htmlFocus.charI);
             htmlFocus.charI = htmlFocus.charI - deleteString.length;
         // when line doesn't have non characters
         } else if (htmlStrings[htmlFocus.lineI].length === deleteString.length) {
-            // console.log("Second")
             htmlStrings[htmlFocus.lineI] = charsBeforeCaret.slice(0, -deleteString.length) +
                 htmlStrings[htmlFocus.lineI].slice(htmlFocus.charI);
             htmlFocus.charI = htmlFocus.charI - deleteString.length+1;
         } else {
-            // console.log("third")
             if (/\w/g.test(deleteString[0])) {  // first character is a \w
                 htmlStrings[htmlFocus.lineI] = charsBeforeCaret.slice(0, -deleteString.length) +
                     htmlStrings[htmlFocus.lineI].slice(htmlFocus.charI)
